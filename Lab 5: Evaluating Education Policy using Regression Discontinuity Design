@@ -1,0 +1,74 @@
+version 17  
+clear all 
+cap log close
+
+cd "C:\Users\abbyy\Downloads"
+use probation.dta, clear 
+
+*Create running variable, centered at GPA = 1.60 threshold
+gen dist_from_cut = GPA - 1.6
+
+* 3 *  
+	
+	* a * Binned scatter plot on pre-determined characteristics
+	
+	ssc install binscatter, replace
+	
+	* pre-determined characteristic: age at entry
+	binscatter age_at_entry dist_from_cut if inrange(dist_from_cut, -1.2, 1.2), rd(0) nq(40) line(lfit)
+	
+	graph export figure1_linear.png, replace
+	
+	* pre-determined characteristic: high school grade percentile before cut-off
+	binscatter hsgrade_pct dist_from_cut if inrange(dist_from_cut, -1.2, 1.2), rd(0) nq(40) line(lfit)
+	
+	graph export figure2_linear.png, replace
+
+	* pre-determined characteristic: credits attempted in first year before cut-off
+	binscatter totcredits_year1 dist_from_cut if inrange(dist_from_cut, -1.2, 1.2), rd(0) nq(40) line(lfit)
+	graph export figure3_linear.png, replace
+	
+	
+	* b* Histograms to check for a spike in the density just above or just below the threshold. Use at least 200 bins so that you can see the discrete nature of GPAs.
+	
+	histogram dist_from_cut if inrange(dist_from_cut, -1.2, 1.2), bin(200)
+	graph export histogram_dist_from_cut.png, replace
+	
+* 4 * Binscatter plot for outcome: Fraction graduating in 4 years 
+	
+	binscatter gradin4 dist_from_cut if inrange(dist_from_cut, -1.2, 1.2), rd(0) nq(40) 
+	graph export figure4_linear.png, replace
+	
+	*here there seems to be a parallel line shift, which wasn't clear in the last graph
+	
+* 5 * 
+
+*a. Estimate a lin reg for observations left of threshold
+
+	reg gradin4 GPA if GPA < 1.6 & GPA >= 0.4
+	
+	* we could use dist_from_cut - one of them would be centered at 0 and the other not
+	
+	 di 1.6 * .2332585 - .13227303 =  
+	 di _b[GPA]*1.6 + _b[_cons]
+	
+*b. for obserations right of threshold
+
+	reg gradin4 GPA if GPA >= 1.6 & GPA <= 2.8 
+	
+	 di (1.6 * .2127772) - 0.05917 = .28127352
+	  	 di _b[GPA]*1.6 + _b[_cons]
+		 	  
+*c. calculate the difference in predicted values
+
+ di 0.28127352 - 0.24048324 
+	
+* 6 * 
+
+* Create indicator for being above probation threshold
+gen T = 0
+replace T = 1 if dist_from_cut >= 0
+* Interact dist_from_cut with non-probation
+gen interaction = dist_from_cut * T
+*Estimate regression (all goes on one line)
+regress gradin4 T dist_from_cut interaction if inrange(dist_from_cut, -1.2, 1.2), r
