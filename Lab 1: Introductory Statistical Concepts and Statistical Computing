@@ -1,0 +1,174 @@
+version 17
+clear all
+cap log close
+cd "C:\Users\abbyy\Downloads\"
+
+use nlsy97.dta, clear
+
+*Question 1: The graph was successfuly made.  
+histogram kid_income
+graph export histogram_dollars.png, replace
+ 
+ *Question 2: The sample mean of kid_income is $70499.94.
+sum kid_income
+
+gen below_mean = 0
+replace below_mean = 1 if kid_income < 70499.94
+
+*Question 3: 
+sum below_mean
+*Answer:  59.6% of observations have kid_income below its mean. This fraction is not 50% because outliers or families with very high income can skew our mean to be much higher without the families. This skewing can make it seem as if $70,499.94 falls in the middle of the income distribution, and thus a fraction like 50% of families could fall above or beyond the value in terms of income. However, a majority of the sample make below the mean. If we wanted to a value in which 50% of the sample, we would have to work with the median.  
+
+*Question 4: 
+sum kid_income, d
+*Answer: The sample median of kid_income is $58,750.
+
+*Question 5:
+sum kid_income
+*Answer: The sample standard deviation of kid_income is $59552.02.
+
+*Question 6:
+gen withinoneSD = 0
+replace withinoneSD = 1 if abs(kid_income - 70499.94) < 59552.02
+sum withinoneSD
+
+gen withintwoSDs = 0
+replace withintwoSDs = 1 if abs(kid_income - 70499.94) < (59552.02*2)
+sum withintwoSDs
+*Answer: 78.7673% of observations are within one standard deviation of the mean of kid_income. 94.896% of observations fall within two standard deviations of the mean.
+
+*Question 7:
+egen kid_inc_rank = rank(kid_income)
+sum kid_inc_rank
+replace kid_inc_rank = 100*kid_inc_rank /r(max)
+histogram kid_inc_rank 
+
+sum kid_inc_rank, d
+
+*Question 8:
+ssc install binscatter
+binscatter kid_income black, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income id_num, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income incarcerated, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income child_education, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income child_college, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income child_sat, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income parent_inc, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income mother_education, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income father_education, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income female, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income age2015, linetype(connect)
+graph export figure2_connected.png, replace
+
+binscatter kid_income cohort, linetype(connect)
+graph export figure2_connected.png, replace
+
+set seed 11534848
+generate x = runiform()
+set seed 11534848
+generate y = runiform()
+list x y
+
+gen treatment_group = 0
+replace treatment_group = 1 if y >= 0.5
+sum treatment_group
+
+replace treatment_group = 0 if y < 0.5
+
+set seed 11534848
+gen x = runiform()
+
+gen treatment_group = 0
+replace treatment_group = 1 if x > 0.5 
+
+sum treatment_group 
+
+*Explanations behind code: "set seed" - in order for comp to generate a random number, you have to give it a seed. Regarding line 118, you are generating a random number between 0 and 1 (each kid in data set is assigned some number... e.g., .5, .7, etc.) (isn't an integer). "treatment_group" is a dummy variable... you could put an equal sign there (but doesn't make much a difference b/c it's unlikely that someone would be assigned .5) (theres'a n infinite number of random numbers/decimals , so the likelihood that you'd get 0.5 is unlikely)
+*Note to self: the goal of the "gen x = runiform()" command is to give every observation a random number from 0 to 1 (with 1/2 with values below 0.5 -- uniform distribution). You then use that random number to split the observations, half into treatment (i.e. treatment = 1) and half into control (i.e. treatment = 0).
+
+tab treatment_group
+*(b) 2,770 kids are in the treatment group. 2,716 are in control group.
+sum id_num if treatment_group == 0
+sum id_num if treatment_group == 1
+*(c) Control group: mean - 4590.263, standard deviation - 2511.885						Treatment group: mean - 4595.673, standard deviation - 2554.784
+
+sum kid_income if treatment_group == 0
+sum kid_income if treatment_group == 1
+*(c) Control group: mean - 70580.46, standard deviation - 58978.97						Treatment group: mean - 70420.99, standard deviation - 60119.14 
+
+sum incarcerated if treatment_group == 0
+sum incarcerated if treatment_group == 1
+*(c) Control group: mean - 0.0953608, standard deviation - 0.2937668 			Treatment group: mean - 0.1036101, standard deviation - 0.3048091
+
+sum child_education if treatment_group == 0
+sum child_education if treatment_group == 1
+*(c) Control group: mean - 13.77172, standard deviation - 3.074548				Treatment group: mean - 13.7704, standard deviation - 2.929037
+
+sum child_college if treatment_group == 0
+sum child_college if treatment_group == 1
+*(c) Control group: mean - 0.3096465, standard deviation - 0.462433 			Treatment group: mean - 0.2797834, standard deviation - 0.4489737
+
+sum child_sat if treatment_group == 0
+sum child_sat if treatment_group == 1
+*(c) Control group: mean - 1188.797, standard deviation - 201.9028 				Treatment group: mean - 1184.944, standard deviation - 196.0703
+
+sum parent_inc if treatment_group == 0
+sum parent_inc if treatment_group == 1
+*(c) Control group: mean - 46419.13, standard deviation - 44970.53 				Treatment group: 46406.71, standard deviation - 47168.61
+
+sum mother_education if treatment_group == 0
+sum mother_education if treatment_group == 1
+*(c) Control group: mean - 12.68667, standard deviation - 2.509383				Treatment group: mean - 12.6509, standard deviation - 2.471026
+
+sum father_education if treatment_group == 0
+sum father_education if treatment_group == 1
+*(c) Control group: mean - 12.71649, standard deviation - 2.380066 				Treatment group: mean - 12.67581, standard deviation - 2.345006
+
+sum female if treatment_group == 0
+sum female if treatment_group == 1
+*(c) Control group: mean - 0.5062592, standard deviation - 0.5000529 			Treatment group: mean - 0.4963899, standard deviation - 0.5000772
+
+sum black if treatment_group == 0
+sum black if treatment_group == 1
+*(c) Control group: mean - 0.2713549, standard deviation - 0.4447407 			Treatment group: mean - 0.2588448, standard deviation - 0.4380793
+
+sum hispanic if treatment_group == 0
+sum hispanic if treatment_group == 1
+*(c) Control group: mean - 0.1984536, standard deviation - 0.398909 			Treatment group: mean - 0.198917, standard deviation - 0.3992575
+
+sum white if treatment_group == 0 
+sum white if treatment_group == 1
+*(c) Control group: mean - 0.59757, standard deviation - 0.490478 				Treatment group: mean - 0.6021661, standard deviation - 0.4895392
+
+sum region if treatment_group == 0
+sum region if treatment_group == 1
+*(c) Control group: mean - 2.680781, standard deviation - 0.974488 				Treatment group: mean - 2.629242, standard deviation - 0.9976917
+
+sum age2015 if treatment_group == 0
+sum age2015 if treatment_group == 1
+*(c) Control group: mean - 32.96502, standard deviation - 1.399247 				Treatment group: mean - 32.95668, standard deviation - 1.399685
+
+sum cohort if treatment_group == 0
+sum cohort if treatment_group == 1
+*(c) Control group: mean - 1982.035, standard deviation - 1.399247 				Treatment group: mean - 1982.043, standard deviation - 1.399685
+
