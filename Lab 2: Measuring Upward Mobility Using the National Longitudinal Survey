@@ -1,0 +1,131 @@
+clear all
+version 17
+cap log close
+cd "C:\Users\abbyy\Downloads"
+
+use nlsy97.dta, clear 
+
+*Question 1a:
+sum child_college if mother_education <= 12
+*Answer: 18.18182% of children whose parents had a high school education or less went on to receive a college degree or higher. (The mean of child_college with these conditions was .1818182.)
+
+
+*Question 1b:
+*Answer: Yes, my estimate of 18.18% is close to professor's calculation of 20.9%.
+
+
+*Question 2a:
+egen kid_inc_rank = rank(kid_income)
+sum kid_inc_rank
+replace kid_inc_rank = 100*kid_inc_rank/r(max)
+
+
+*Question 2b:
+egen parent_inc_rank = rank(parent_inc)
+sum parent_inc_rank
+replace parent_inc_rank = 100*parent_inc_rank /r(max)
+
+
+*Question 3a:
+twoway (scatter kid_inc_rank parent_inc_rank) ///
+(lfit kid_inc_rank parent_inc_rank), name(s, replace)
+
+graph export figure1.png, replace
+
+
+*Question 3b:
+binscatter kid_inc_rank parent_inc_rank, name(b, replace)
+graph export figure2.png, replace
+
+
+*Question 4:
+regress kid_inc_rank parent_inc_rank
+*Intercept:  31.41826
+*Estimated slope: .3727907  
+
+
+*Question 5a:
+display _b[_cons] + 25*_b[parent_inc_rank]
+*Answer: The predicted child income rank from the rank-rank regression in question 4 is 40.738031. It is very close to the value of 41.3 reported in Raj Chetty's 2014 report.
+
+*Question 5b:
+display 100*.3727907
+
+display (_b[_cons] + 100*_b[parent_inc_rank]) - /// 
+(_b[_cons] + 0*_b[parent_inc_rank])
+*Answer: The relatively mobility is 37.279072. It is a bit off from the value reported in Raj Chetty's 2014 report.
+
+*Question 5c:
+
+*Identify children who reach the top 5th:
+gen top20 = 0
+replace top20 = 1 if kid_inc_rank > 80
+
+*Proportion of those in the top 5th whose parents were in the bottom 5th:
+sum top20 if parent_inc_rank < 20
+*There are so many ways to answer this question!
+
+*Answer: The Horatio Alger measure is 7.37034. It is relatively close to the measure calculated using full population tax data (Chetty et al. 2014). 
+
+*Question 5d:
+
+*$1 in 1997 would be worth $1.4767 in 2015
+gen more_than_parents = 0
+replace more_than_parents = 1 /// 
+if kid_income > 1.4767*parent_inc
+
+sum more_than_parents
+*Answer: 50.89318 of children make more in inflation-adjusted dollars than their parents. This is very close to the value of 50% reported in Raj Chetty's 2017 report.
+
+*Question 6:
+regress kid_inc_rank parent_inc_rank if (female == 0 & black == 1)
+*Black men - Intercept: 25.70348, Estimated slope: .29432
+regress kid_inc_rank parent_inc_rank if (female == 0 & white == 1)
+*White men - Intercept: 40.11022, Estimated slope: .266921
+
+
+display _b[_cons] + 25*_b[parent_inc_rank]  
+*Absolute mobility at the 25th percentile for Black men: 33.061475
+display _b[_cons] + 25*_b[parent_inc_rank]  
+*Absolute mobility at the 25th percentile for white men: 46.783246
+
+
+display (_b[_cons] + 100*_b[parent_inc_rank]) - /// 
+(_b[_cons] + 0*_b[parent_inc_rank])  
+*Relative mobility for Black men: 29.431995
+display (_b[_cons] + 100*_b[parent_inc_rank]) - /// 
+(_b[_cons] + 0*_b[parent_inc_rank]) 
+*Relative mobility for white men: 26.692104%
+
+
+sum top20 if parent_inc_rank < 20 & (female == 0 & black == 1)
+*Horatio Alger Measure for Black men: 5.78512
+sum top20 if parent_inc_rank < 20 & (female == 0 & white == 1)
+*Horatio Alger Measure for white men: 10.27027
+
+
+sum more_than_parents if (female == 0 & black == 1) 
+*Absolute mobility for Black men: 48.93314
+sum more_than_parents if (female == 0 & white == 1)
+*Absolute mobility for white men: 48.26347
+
+
+*Question 7a:
+sum kid_inc_rank if 21.5 < parent_inc_rank < 27.5 
+*Binned average: 50.08672
+
+
+*Question 7b (Statistic 1):
+set seed 11534848
+sample 50, count
+regress kid_inc_rank parent_inc_rank
+display _b[_cons] + 25*_b[parent_inc_rank] 
+*Answer: 33.267741 is the absolute mobility at the 25th percentile for a random sample of 50 observations. 
+
+
+*Question 7c:
+sum kid_inc_rank if 21.5 < parent_inc_rank < 27.5
+*45.51985 is the mean for the random sample.
+
+
+*Question 7d: The average calculated in question 7c is a closer estimate to the full population estimate of 41.3 reported by Chetty et al. (2014).
