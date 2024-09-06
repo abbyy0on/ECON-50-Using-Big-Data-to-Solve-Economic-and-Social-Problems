@@ -1,0 +1,115 @@
+clear all
+version 17
+cap log close
+
+cd "C:\Users\abbyy\Downloads"
+use atlas.dta
+
+*Question 3
+
+histogram kfr_pooled_pooled_p25
+graph export statistic1_allgroups.png, replace
+
+*Question 4
+
+sum kfr_pooled_pooled_p25
+
+*The tract, county and state FIPS codes for my home address: Blackberry Dr, Greenville, NC
+
+. list kfr_pooled_pooled_p25 if state == 37 & county == 147 & tract == 001003
+
+*Question 5 - statistic 1 for North Carolina and my home Census tract
+
+sum kfr_pooled_pooled_p25 if state == 37
+
+sum kfr_pooled_pooled_p25 if  state == 37 & county == 147 & tract == 001003
+
+*Question 6 - statistic 1 for Pitt County
+
+sum kfr_pooled_pooled_p25 if state == 37 & county == 147
+ 
+*Question 7a - upward mobility for children in 1980s depending on their Census tract's HOLC grade
+
+sum kfr_pooled_pooled_p25 if HOLC_A > 0.5 & HOLC_A != .
+
+sum kfr_pooled_pooled_p25 if HOLC_B > 0.5 & HOLC_B != .
+
+sum kfr_pooled_pooled_p25 if HOLC_C > 0.5 & HOLC_C != .
+
+sum kfr_pooled_pooled_p25 if HOLC_D > 0.5 & HOLC_D != .
+
+
+*Question 7b - holding fixed race
+
+	*relationship between upward mobility and HOLC grade for Black children
+
+sum kfr_black_pooled_p25 if HOLC_A > 0.5 & HOLC_A != .
+
+sum kfr_black_pooled_p25 if HOLC_B > 0.5 & HOLC_B != .
+
+sum kfr_black_pooled_p25 if HOLC_C > 0.5 & HOLC_C != .
+
+sum kfr_black_pooled_p25 if HOLC_D > 0.5 & HOLC_D != .
+
+	*relationship between upward mobility and HOLC grade for white children
+
+sum kfr_white_pooled_p25 if HOLC_A > 0.5 & HOLC_A != .
+
+sum kfr_white_pooled_p25 if HOLC_B > 0.5 & HOLC_B != .
+
+sum kfr_white_pooled_p25 if HOLC_C > 0.5 & HOLC_C != .
+
+sum kfr_white_pooled_p25 if HOLC_D > 0.5 & HOLC_D != .
+
+*Question 8a
+
+	* install binscatter
+	
+	ssc install binscatter
+	
+	* college graduation / degree rates as a co-variate
+		
+	binscatter kfr_pooled_pooled_p25 frac_coll_plus2000, name(b, replace)
+	graph export figure2.png, replace
+
+
+	* median household income as a co-variate
+	
+		binscatter kfr_pooled_pooled_p25 med_hhinc1990, name(c, replace)
+		graph export figure3.png, replace
+		
+*Question 8b - correlation coefficients
+
+	*college graduation / degree rates as a co-variate
+		
+	cor kfr_pooled_pooled_p25 frac_coll_plus2000 if state == 37  
+	
+	* median household income as a co-variate
+
+	cor kfr_pooled_pooled_p25 med_hhinc1990 if state == 37 
+	
+*Question 9 - are the above patterns similar by race?
+
+	*college graduation / degree rates as a co-variate
+	
+		cor kfr_natam_pooled_p25 frac_coll_plus2000 if state == 37  
+		
+		cor kfr_asian_pooled_p25 frac_coll_plus2000 if state == 37  
+
+		cor kfr_black_pooled_p25 frac_coll_plus2000 if state == 37  
+
+		cor kfr_hisp_pooled_p25 frac_coll_plus2000 if state == 37  
+
+		cor kfr_white_pooled_p25 frac_coll_plus2000 if state == 37  
+	
+	* median household income as a co-variate
+
+		cor kfr_natam_pooled_p25 med_hhinc1990 if state == 37  
+		
+		cor kfr_asian_pooled_p25 med_hhinc1990 if state == 37  
+		
+		cor kfr_black_pooled_p25 med_hhinc1990 if state == 37  
+ 
+		cor kfr_hisp_pooled_p25 med_hhinc1990 if state == 37  
+
+		cor kfr_white_pooled_p25 med_hhinc1990 if state == 37  
