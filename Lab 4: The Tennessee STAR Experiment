@@ -1,0 +1,175 @@
+version 17  
+clear all 
+cap log close
+
+cd "C:\Users\abbyy\Downloads"
+use star.dta, clear 
+
+
+*QUESTIONS
+
+*2.	Comparing average class size in small kindergarten classes vs. regular kindergarten classes:
+
+		sum class_size if small == 0
+		sum class_size if small == 1
+  
+*3.	
+
+	/*
+	
+	a. Four standardized test scores:
+	
+	*/
+
+		sum math if small == 0
+			gen math_sd = (math - r(mean))/r(sd)
+			di (math - r(mean))/r(sd)
+ 		
+		sum read if small == 0
+			gen read_sd = (read - r(mean))/r(sd)
+			di (read - r(mean))/r(sd)
+			
+		sum listen if small == 0
+			gen std_listen = (listen - r(mean)) / r(sd)
+			di (listen - r(mean)) / r(sd)
+		
+		sum wordskill if small == 0
+			gen std_wordskill = (wordskill - r(mean)) / r(sd)
+			di (wordskill - r(mean)) / r(sd)
+			
+	/*
+	
+	b. Then generate sat_index
+	
+	*/
+	
+		egen sat_index = rowmean(math_sd read_sd std_listen std_wordskill)
+	
+		gen sat_index_2 = (math_sd + read_sd + std_listen + std_wordskil)/4
+		
+	/*
+	
+	c. Histogram of sat_index for small kindergarten classes + for regular kindergarten classes
+	
+	*/
+	
+		#delimit ;
+		
+		twoway
+			(hist sat_index if small == 1, fcolor(gs12%50) lcolor(gs12))
+			(hist sat_index if small == 0, fcolor(orange%50) lcolor(orange)),
+			legend(order(1 "Small Class" 2 "Regular Class"))
+			ylabel(none) graphregion(color(white)) bgcolor(white)
+			xtitle("End-of-Year KG Test (sigma's)")
+		;	
+		#delimit cr
+		
+		graph export sat_index_contrast.png, replace
+		
+
+*4. 
+
+	/* 
+	
+	a. Testing for balance 
+	
+	*/
+	
+		count
+		
+		collapse (mean) sat_index class_size female freelunch, by(teacher_id teacher_experience teacher_black teacher_white teacher_masters small school_id)
+		count
+		
+	/*
+	
+	b. Linear regression of teacher_experience
+	
+	*/
+	
+	reg teacher_experience small , r
+		di -.4107214 - .6645779*1.96
+		di -.4107214 + .6645779*1.96
+		
+ssc install outreg2
+		
+outreg2 using lab4.xls, replace keep(small) addstat(UB, _b[small] + 1.96*_se[small], LB, _b[small] - 1.96*_se[small])
+	
+	/*
+	
+	c. Repeat question b for teacher_masters, teacher_white, and teacher_black
+	
+	*/
+	
+	reg teacher_masters small , r
+		di -.0408017 - .0539255*1.96
+		di -.0408017 + .0539255*1.96
+		
+	reg teacher_white small , r
+		di .0429094 - .0407194*1.96
+		di .0429094 + .0407194*1.96
+		
+	reg teacher_black small , r
+		di -.0378589 - .0405136*1.96
+		di -.0378589 + .0405136*1.96
+		
+
+*5.
+
+	/*
+	
+	a.  Multivariable regression on sat_index
+	
+	*/
+																										reg sat_index small i.school_id, r		
+																								
+	/*
+	
+	b.  Confidence Interval of Causal Effect 
+	
+	*/
+	
+		di .1617962 - .0428784*1.96
+		di .1617962 + .0428784*1.96
+																									/*
+	
+	c.  Bar Graph 
+	
+	*/
+	
+	clear all 
+	set obs 2
+	
+	gen treat = 0
+	replace treat = 1 in 2
+	
+	*Control group mean
+	gen y = .0096704 in 1
+	*Treatment group mean
+	replace y = .0096704 + .1617962 in 2
+	
+	*Add standard error for difference in means	
+	gen se = .
+	replace se = 0.05 in 2
+
+	
+	*Compute 95% confidence interval range 
+	gen ub = y + 1.96*se
+	gen lb = y - 1.96*se
+	
+	*Look at data set we have created
+	list
+	
+	#delimit ;
+	twoway
+		(bar y treat if treat == 0, barwidth(0.4) color(red))
+		(bar y treat if treat == 1, barwidth(0.4) color(blue))
+		(rcap ub lb treat, color(black)), 
+		legend(off)
+		xlab(0 "Control Group" 1 "Treatment Group")
+		xtitle("")
+		ytitle("Mean SAT Index" " ")
+		xsc(range(-0.3 1.3)) ylab(0(.1).3,nogrid)
+		graphregion(color(white)) bgcolor(white)
+		;
+	#delimit cr
+	graph export bargraphstar.png, replace
