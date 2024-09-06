@@ -1,0 +1,131 @@
+clear all
+version 17
+cap log close
+
+cd "C:\Users\abbyy\Downloads"
+use mto.dta, clear
+
+* 2) What fraction of control group moved?
+
+sum moved if voucher == 0
+
+* 3) What fraction of treatment group moved?
+
+sum moved if voucher == 1
+
+* 4) Linear regression of moved on an intercept and voucher
+
+reg moved voucher
+
+* 6) ITT effect of the voucher on the kessler score
+
+reg kessler voucher
+
+* 7) Estimate TOT
+
+reg moved voucher
+local comp = _b[voucher]
+
+reg kessler voucher
+local itt = _b[voucher] 
+
+di `itt'/`comp'
+
+* 8) Incorrect measure: as-treated
+
+sum kessler if moved == 1
+sum kessler if moved == 0
+
+reg kessler moved
+
+* 9) Incorrect measure: Per Protocol (keep only those who comply)
+
+sum kessler if moved == 1 & voucher == 1
+sum kessler if moved == 0 & voucher == 0
+
+****** below is the easiser way to do this, more accurate ******
+
+reg kessler voucher if (moved == 1 & voucher == 1) | (moved == 0 & voucher == 0)
+
+* 12)
+
+	* a) Fraction of each group that moved:
+	
+	clear all
+	set obs 2
+	
+	gen treat = 0
+	replace treat = 1 in 2
+	
+	*Control group mean
+	gen y = .0001 in 1
+	*Treatment group mean
+	replace y = .4306319 in 2
+	
+	#delimit ;
+	twoway
+	(bar y treat if treat == 0, barwidth(0.4) color (red))
+	(bar y treat if treat == 1, barwidth(0.4) color(blue))
+	, legend(off)
+	xlab(0 "Control Group" 1 "Treatment Group")
+	xtitle("")
+	ytitle("Moved Using Experimental Voucher""")
+	xsc(range(-0.3 1.3)) ylab(0(.2).5, nogrid)
+	graphregion(color(white)) bgcolor(white);
+	#delimit cr
+	
+	graph export fig1_compliance.png, replace
+	
+	* b) kessler for control and treatment group (ITT)
+	
+	clear all
+	set obs 2
+	
+	gen treat = 0
+	replace treat = 1 in 2
+	
+	*mean of kessler for control group
+	gen y =   6.880597  in 1
+	*mean of kessler for treatment group
+	replace y = 6.2925824 in 2
+	
+	#delimit ;
+	twoway
+	(bar y treat if treat == 0, barwidth(0.4) color (red))
+	(bar y treat if treat == 1, barwidth(0.4) color(blue))
+	, legend(off)
+	xlab(0 "Control Group" 1 "Treatment Group")
+	xtitle("")
+	ytitle("Mean Kessler")
+	xsc(range(-0.3 1.3)) ylab(0(1)6, nogrid)
+	graphregion(color(white)) bgcolor(white);
+	#delimit cr
+	
+	graph export fig2_compliance.png, replace
+	
+	* c) kessler for control and treatment group (TOT)
+
+	clear all
+	set obs 2
+	
+	gen treat = 0
+	replace treat = 1 in 2
+	
+	*mean of kessler for control group
+	gen y = 6.880597 in 1
+	*adjusted mean of kessler for treatment group
+	replace y = 5.515104  in 2
+	
+	#delimit ;
+	twoway
+	(bar y treat if treat == 0, barwidth(0.4) color (red))
+	(bar y treat if treat == 1, barwidth(0.4) color(blue))
+	, legend(off)
+	xlab(0 "Control Group" 1 "Treatment Group")
+	xtitle("")
+	ytitle("Mean Adjusted Kessler")
+	xsc(range(-0.3 1.3)) ylab(0(1)6, nogrid)
+	graphregion(color(white)) bgcolor(white);
+	#delimit cr
+	
+	graph export fig3_compliance.png, replace
