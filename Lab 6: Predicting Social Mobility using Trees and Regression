@@ -1,0 +1,99 @@
+# Load Relevant Packages
+import numpy as np
+import pandas as pd
+import sklearn as sk
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.tree import plot_tree
+from sklearn import linear_model
+from sklearn.metrics import mean_squared_error
+pd.options.display.max_columns = None
+
+# read in the mobility.dta data set
+mobility = pd.read_stata("mobility.dta")
+
+# look at the first five rows of the data set:
+mobility.head()
+# summary statistics
+mobility.describe()
+
+# look at the names of different variables
+mobility.columns
+
+#Set y to equal kfr_pooled_pooled_p25
+y = mobility.kfr_pooled_pooled_p25
+
+# choose predictors
+predictors =['med_hhinc1990', 'singleparent_share1990', 'mail_return_rate2010']
+X = mobility[predictors]
+
+print('The object Y has', y.shape[0], 'rows')
+print('The object X data has', X.shape[0], 'rows and', X.shape[1], 'columns')
+
+#  create four objects: y_train , y_test , X_train , and X_test , to be used in subsequent questions.
+# 1. y_train is the outcome ( kfr_pooled_pooled_p25 ) in the training dataset
+# 2. y_test is the outcome ( kfr_pooled_pooled_p25 ) in the test dataset
+# 3. X_train are the predictors of interest in the training dataset
+# 4. X_test are the predictors of interest in the test dataset
+
+HUID = 11534848
+
+# Split the Data into Test and Train sets to define y_train, y_test, X_train, and X_test.
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.50, random_state = HU
+
+# look at shape of test and train datasets
+print('The object y_test has', y_test.shape[0], 'rows')
+print('The object y_train has', y_train.shape[0], 'rows')
+print('The object X_test has', X_test.shape[0], 'rows and', X_test.shape[1], 'columns')
+print('The object X_train has', X_train.shape[0], 'rows and', X_train.shape[1], 'columns')
+
+# estimating a regression of kfr_pooled_pooled_p25 ( y_train ) on at least three predictor variables in the training data ( X_train ).
+OLS = linear_model.LinearRegression()
+
+# specify the predictors and the outcome variable in the regression model using OLS.fit() 
+olsmodel = OLS.fit(X_train, y_train)
+
+#  display the estimated regression coefficients requires a little bit of work:
+coef_table = pd.DataFrame(list(X_train.columns) + ['intercept_']).copy()
+coef_table.insert(len(coef_table.columns),"Coefs", list(olsmodel.coef_.transpose()) + [olsmod
+coef_table
+
+#  predict kfr_pooled_pooled_p25 for Milwaukee, WI, which has cz == 24100 .
+milwaukee = mobility[(mobility["cz"] == 24100)]
+milwaukee
+
+# Generate predictions for all observations in training sample
+y_train_predictions_ols = OLS.predict(X_train)
+
+# Generate predictions for all observations in test sample
+y_test_predictions_ols = OLS.predict(X_test)
+
+#  Calculate in-sample root mean squared prediction error
+OLS_performance_trainset = round(np.sqrt(mean_squared_error(y_train, y_train_predictions_ols)
+print('The performance of multivariable regresson in the training set is, RMSPE:', OLS_performance_trainset
+
+#  Calculate out-of-sample root mean squared prediction error
+OLS_performance_testset = round(np.sqrt(mean_squared_error(y_test, y_test_predictions_ols)),4
+print('The performance of multivariable regresson in the test set is, RMPSE:',OLS_performance_testset
+
+# Estimating a Decision Tree to Predict Upward Mobility
+Depth = 3
+DTREE = DecisionTreeRegressor(max_depth=Depth)
+dtreemodel = DTREE.fit(X_train, y_train)
+
+# visualize the decision tree
+plt.figure(figsize=(12,12)) # set plot size (denoted in inches)
+plot_tree(dtreemodel, fontsize=10, feature_names=predictors, filled=True)
+plt.show()
+
+# Predicting Upward Mobility for Milwaukee and calculating prediction error
+milwaukee = mobility[(mobility["cz"] == 24100)]
+milwaukee
+
+# Generate predictions for all observations in training sample
+y_train_predictions_tree = DTREE.predict(X_train)
+
+# Generate predictions for all observations in test sample
+y_test_predictions_tree = DTREE.predict(X_test)
+ 
