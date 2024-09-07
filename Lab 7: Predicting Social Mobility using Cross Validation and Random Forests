@@ -1,0 +1,221 @@
+# UPWARD MOBILITY FOR AVERAGE WHITE CHILD
+parents_rank = 57.9
+kids_rank = 33.31 + 0.351 * parents_rank
+kids_rank
+
+# UPWARD MOBILITY FOR AVERAGE WHITE CHILD (fOR NEXT GENERATION)
+parents_rank = kids_rank
+kids_rank = 33.31 + 0.351 * parents_rank
+kids_rank
+
+import numpy as np
+
+parents_rank = 57.9
+generations = np.arange(1,8)
+for i in generations:
+    kids_rank = 33.31 + 0.351 * parents_rank
+    print('In generation', i, 'parent_rank =', parents_rank, ', child_rank =', kids_rank)
+    parents_rank = kids_rank
+
+# UPWARD MOBILITY FOR AVERAGE BLACK CHILD 
+parents_rank = 32.7
+generations = np.arange(1,8)
+for i in generations:
+    kids_rank = 33.31 + 0.351 * parents_rank
+    print('In generation', i, 'parent_rank =', parents_rank, ', child_rank =', kids_rank)
+    parents_rank = kids_rank
+
+
+parents_rank = 32.7
+kids_rank = 25.4 + 0.28 * parents_rank
+kids_rank
+
+# SEE WHAT HAPPENS ACROSS GENERATIONS
+parents_rank = 32.7
+generations = np.arange(1,8)
+for i in generations:
+    kids_rank = 25.4 + 0.28 * parents_rank
+    print('In generation', i, 'parent_rank =', parents_rank, 'child_rank =', kids_rank)
+    parents_rank = kids_rank
+
+
+# WRITE A LOOP TO PREDICT SOCIAL MOBILITY FOR HISPANIC CHILDREN OVER THE NEXT 7 GENERATIONS
+parents_rank = 36.17
+generations = np.arange(1,8)
+for i in generations:
+    kids_rank = 36.14 + 0.26 * parents_rank
+    print('In generation', i, 'parent_rank =', parents_rank, 'child_rank =', kids_rank)
+    parents_rank = kids_rank
+
+# LOAD RELEVANT PACKAGES
+import numpy as np
+import pandas as pd
+import sklearn as sk
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+
+from sklearn.ensemble import RandomForestRegressor
+
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.tree import plot_tree
+from sklearn import linear_model
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import make_scorer
+from sklearn.utils import shuffle
+
+# READ IN THE TRAINING AND LOCK BOX DATA
+train_data = pd.read_stata("atlas_training.dta")
+test_data = pd.read_stata("atlas_lockbox.dta")
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+train_data.head() # LOOK AT FIRST FIVE ROWS
+
+test_data.head()
+
+train_data.describe() # CHECK SUMMARY STATISTICS
+
+print('The training data has', train_data.shape[0], 'rows and', train_data.shape[1], 'columns')
+print('The test data has', test_data.shape[0], 'rows and', test_data.shape[1], 'columns')
+
+# have a list of State FIPS (geoid) codes that correspond to the areas in the test data or training data
+test_geoids = train_data[train_data.test == 1].geoid
+training_geoids = train_data[train_data.training == 1].geoid
+
+all_predictors = [col for col in train_data if col.startswith('P_')]
+X_train = train_data[train_data.training == 1][all_predictors]
+X_test = train_data[train_data.test == 1][all_predictors]
+
+y_train = pd.DataFrame(train_data[train_data.training == 1].kfr_pooled_pooled_p25)
+y_test = pd.DataFrame(test_data[test_data.geoid.isin(test_geoids)].kfr_actual)
+
+print('y_test:', y_test.shape)
+print('y_train:', y_train.shape)
+print('X_test:', X_test.shape)
+print('X_train:', X_train.shape)
+
+########## CROSS-VALIDATION LOOP
+
+# Choose your predictor variables
+hand_selected_predictors = ['P_33', 'P_44'] 
+print("Number of items in the list = ", len(hand_selected_predictors))
+
+# Choose number of folds and set the "seed" using your HUID
+folds = 7
+HUID = 11534848
+kf = KFold(n_splits=folds, random_state=HUID, shuffle=True)
+
+#The loop takes as an input the number of predictors
+predictors_num = len(hand_selected_predictors)
+
+## Set a range of tree depths
+depths = np.arange(1,21)
+test_rmse = []
+
+## Iterate over the range of depths
+for depth in depths:
+    
+    # Create decision tree model of depth size 'depth'
+    tree = DecisionTreeRegressor(max_depth=depth)
+    fold_rmse = []
+    
+    # Split test data by fold
+    for train_index, test_index in kf.split(X_train):
+        
+        # Create X and Y objects for folds used to fit the model
+        fold_xtrain = X_train.iloc[train_index][hand_selected_predictors].values.reshape(-1,predictors_num)
+        fold_ytrain = y_train.iloc[train_index]
+        
+        # Create X and Y objects for the fold left out
+        fold_xtest = X_train.iloc[test_index][hand_selected_predictors].values.reshape(-1,predictors_num)
+        fold_ytest = y_train.iloc[test_index]
+
+        # Fit the decision tree on the training folds
+        dtreemodel = tree.fit(fold_xtrain, fold_ytrain) 
+
+        # Use that model to predict values for the fold left out and calculate the RMSPE
+        test_pred = tree.predict(fold_xtest)
+        test_sqrt = np.sqrt(mean_squared_error(fold_ytest, test_pred))
+        fold_rmse.append(test_sqrt)   
+    
+    # Take the mean RMSE across all folds for that depth
+    test_rmse.append(np.mean(fold_rmse))
+
+# PLOT CROSS-VALIDATION RMSPE
+plt.figure(figsize=(10,5))
+plt.plot(depths, test_rmse, '*-')
+plt.xlabel('Max Depth')
+plt.ylabel('CV RMSE')
+plt.xticks(np.arange(min(depths), max(depths)+1, 1.0))
+plt.title("Comparing the CV error for different levels of Max Depth in a Decision Tree Regression")
+plt.show()
+
+# Select Depth using Cross Validation
+cv_optimal_depth = 4
+
+# Question 3c: Estimate and Visualize a Final Tree using Cross Validation Selected Depth
+DTREE = DecisionTreeRegressor(max_depth=cv_optimal_depth)
+dtreemodel = DTREE.fit(X_train[hand_selected_predictors], y_train) 
+
+plt.figure(figsize=(12,12))  # set plot size (denoted in inches)
+plot_tree(dtreemodel, fontsize=10, feature_names=hand_selected_predictors, filled=True)
+plt.show()
+
+#  Question 3d: Predictions in test and training samples
+y_train_predictions_tree = dtreemodel.predict(X_train[hand_selected_predictors])
+y_test_predictions_tree = dtreemodel.predict(X_test[hand_selected_predictors])
+
+print(y_train_predictions_tree)
+print(y_test_predictions_tree)
+
+#  implement a random forest with at least 1000 trees (bootstrap samples) using the same two predictors you selected for the decision tree.
+tree_num = 1000
+predictors_num = 2
+rforest_small = RandomForestRegressor(n_estimators=tree_num, max_features=predictors_num)
+
+RForestSmallModel = rforest_small.fit(X_train[hand_selected_predictors], y_train.values.ravel())
+
+y_train_predictions_small_forest = RForestSmallModel.predict(X_train[hand_selected_predictors])
+y_test_predictions_small_forest = RForestSmallModel.predict(X_test[hand_selected_predictors])
+
+# INPUT RANDOMIZATION
+tree_num = 1000
+predictors_num = 40
+RForest = RandomForestRegressor(n_estimators=tree_num, max_features=predictors_num)
+RForestModel = RForest.fit(X_train, y_train.values.ravel())
+y_train_predictions_forest = RForestModel.predict(X_train)
+y_test_predictions_forest = RForestModel.predict(X_test)
+
+# PLOT THE IMPORTANCE OF EACH PREDICTOR IN THE LARGE RANDOM FOREST MODEL
+plt.figure(figsize=(15,25))
+pd.Series(RForestModel.feature_importances_, index=list(X_train)).sort_values().plot(kind="barh");
+plt.xlabel('Feature Importance')
+plt.ylabel('Feature')
+plt.title('Random Forest Model Features by Importance');
+plt.show()
+
+# Question 8: Performance in Training Data Set
+tree_performance_trainset = mean_squared_error(y_train, y_train_predictions_tree)
+smallforest_performance_trainset = mean_squared_error(y_train, y_train_predictions_small_forest)
+forest_performance_trainset = mean_squared_error(y_train, y_train_predictions_forest)
+
+print('Tree with hand picked predictors', round(np.sqrt(tree_performance_trainset), 4))
+print('Random forest with hand picked predictors: ', round(np.sqrt(smallforest_performance_trainset), 4))
+print('Random forest with full set of 121 predictors:', round(np.sqrt(forest_performance_trainset), 4))
+
+ # Use kfr_actual to calculate the root mean squared prediction error for the 50% of observations with training==0 and test==1
+tree_performance_testset = mean_squared_error(y_test, y_test_predictions_tree)
+smallforest_performance_testset = mean_squared_error(y_test, y_test_predictions_small_forest)
+forest_performance_testset = mean_squared_error(y_test, y_test_predictions_forest)
+
+print('Tree with hand picked predictors', round(np.sqrt(tree_performance_testset), 4))
+print('Random forest with hand picked predictors: ', round(np.sqrt(smallforest_performance_testset), 4))
+print('Random forest with full set of 121 predictors:', round(np.sqrt(forest_performance_testset), 4))
+
+
+
+
