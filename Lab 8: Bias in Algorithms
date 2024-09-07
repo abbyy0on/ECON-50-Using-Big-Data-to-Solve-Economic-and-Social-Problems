@@ -1,0 +1,151 @@
+clear all
+version 17
+cap log close
+cd "C:\Users\abbyy\Downloads"
+ 
+use lab8_results_python.dta, clear 
+
+
+ * Further analysis
+describe
+codebook
+
+* (6) Convert the predictions in the test sample from each of your prediction algorithms into percentile ranks, normalized so that the top rank is equal to 100:
+	
+	* Model 1 for TEST dataset
+	*** Generate a new variable that rank orders yvar
+	egen y_test_predictions_mod1_rank = rank(y_test_predictions_mod1)
+
+	**** Normalize the variable by dividing it by maximum rank and multiplying by 100
+	sum y_test_predictions_mod1_rank
+	replace y_test_predictions_mod1_rank = 100* y_test_predictions_mod1_rank / r(max)
+	
+
+	* Model 2 for TEST dataset
+	*** Generate a new variable that rank orders yvar
+	egen y_test_predictions_mod2_rank = rank(y_test_predictions_mod2)
+	
+	**** Normalize the variable by dividing it by maximum rank and multiplying by 100
+	sum y_test_predictions_mod2_rank
+	replace y_test_predictions_mod2_rank = 100* y_test_predictions_mod2_rank / r(max)
+	
+ 
+	* Model 3 for TEST dataset
+	*** Generate a new variable that rank orders yvar
+	egen y_test_predictions_mod3_rank = rank(y_test_predictions_mod3)
+	
+	**** Normalize the variable by dividing it by maximum rank and multiplying by 100
+	sum y_test_predictions_mod3_rank
+	replace y_test_predictions_mod3_rank = 100* y_test_predictions_mod3_rank / r(max)
+	
+ 
+	* Model 4 for TEST dataset
+	*** Generate a new variable that rank orders yvar
+	egen y_test_predictions_mod4_rank = rank(y_test_predictions_mod4)
+	
+	**** Normalize the variable by dividing it by maximum rank and multiplying by 100
+	sum y_test_predictions_mod4_rank
+	replace y_test_predictions_mod4_rank = 100* y_test_predictions_mod4_rank / r(max)
+	
+* (7a) Calculate fraction of all Black patients with percentile rank/risk score > 55 (top 45 percent)
+
+	* Model 1: 
+  	sum y_test_predictions_mod1_rank 
+	count if race == "black"
+	count if race == "black" & y_test_predictions_mod1_rank > 55
+	display 2612/4977 
+	*Answer: .52481415 or 52.481415% of Black patients eligible for program
+		
+	*Model 2:
+  	sum y_test_predictions_mod2_rank 
+	count if race == "black"
+	count if race == "black" & y_test_predictions_mod2_rank > 55
+	display 2701/4977  
+	*Answer: .5426964 or 54.26964%  of Black patients eligible for program
+	
+	*Model 3:
+   	sum y_test_predictions_mod3_rank 
+	count if race == "black"
+	count if race == "black" & y_test_predictions_mod3_rank > 55
+	display 2941/4977   
+	*Answer: .59091822 or 59.091822% of Black patients eligible for program
+
+	*Model 4:
+	sum y_test_predictions_mod4_rank 
+	count if race == "black"
+	count if race == "black" & y_test_predictions_mod4_rank > 55
+	display 3046/4977   
+	*Answer: .61201527 or 61.201527% of Black patients eligible for program
+ 
+ 
+* (7b) Calculate percentage of Black patients among all patients with risk score above 55th percentile
+
+	* Model 1:
+	gen top45 = 0
+	replace top45 = 1 if y_test_predictions_mod1_rank > 55
+	sum top45 if tm1_dem_black == 1
+	*Answer: .5248141  or 52.48141%
+
+
+	* Model 2:
+	gen top45 = 0
+	replace top45 = 1 if y_test_predictions_mod2_rank > 55
+	sum top45 if tm1_dem_black == 1
+	*Answer: .5426964   or 54.26964%
+
+	
+	* Model 3:
+	gen top45 = 0
+	replace top45 = 1 if y_test_predictions_mod3_rank > 55
+	sum top45 if tm1_dem_black == 1
+	*Answer:  .6891702  or 68.91702%
+	
+	* Model 4:
+	gen top45 = 0
+	replace top45 = 1 if y_test_predictions_mod4_rank > 55
+	sum top45 if tm1_dem_black == 1
+	*Answer: .7060478 or 70.60478%
+	
+* (8) Produce binned scatter plots of patient costs and patient health vs. the percentile rank "risk score" from each algorithm, with White and Black patients plotted separately.
+
+	ssc install binscatter
+	
+	* Model 1:
+		
+		*Patient Costs vs Risk Score
+		binscatter cost_t y_test_predictions_mod1_rank, by(race) linetype(connect)
+		graph export figure1_connected.png, replace
+		
+		*Patient Health vs Risk Score
+		binscatter gagne_sum_t y_test_predictions_mod1_rank, by(race) linetype(connect)
+		graph export figure2_connected.png, replace
+
+	* Model 2:
+	
+		*Patient Costs vs Risk Score
+		binscatter cost_t y_test_predictions_mod2_rank, by(race) linetype(connect)
+		graph export figure3_connected.png, replace
+		
+		*Patient Health vs Risk Score
+		binscatter gagne_sum_t y_test_predictions_mod2_rank, by(race) linetype(connect)
+		graph export figure4_connected.png, replace
+		
+	* Model 3:
+
+		*Patient Costs vs Risk Score
+		binscatter cost_t y_test_predictions_mod3_rank, by(race) linetype(connect)
+		graph export figure5_connected.png, replace
+		
+		*Patient Health vs Risk Score
+		binscatter gagne_sum_t y_test_predictions_mod3_rank, by(race) linetype(connect)
+		graph export figure6_connected.png, replace
+	
+	* Model 4:
+	
+		*Patient Costs vs Risk Score
+		binscatter cost_t y_test_predictions_mod4_rank, by(race) linetype(connect)
+		graph export figure7_connected.png, replace
+
+		*Patient Health vs Risk Score
+		binscatter gagne_sum_t y_test_predictions_mod4_rank, by(race) linetype(connect)
+		graph export figure8_connected.png, replace
