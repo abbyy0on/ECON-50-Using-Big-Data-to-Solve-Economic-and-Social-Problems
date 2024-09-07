@@ -1,0 +1,153 @@
+capture log close
+log using project2_abby.log, replace
+
+clear all
+version 17
+cap log close
+
+cd "C:\Users\abbyy\Downloads"
+use third_grade.dta, clear
+
+* (2) 
+	* Describe all variables in the data to begin initial data analysis
+	describe
+	* Report detailed information on all variables to observe which variables have missing values and how many there are
+	codebook
+
+* (3)
+	*To deal with missing test scores and those without natural units, follow the following steps:
+	
+	*Subtract sample mean + divide by the sample standard deviation for each exam score
+		*math test scores
+		sum math
+		gen math_std = (math - r(mean)) / r(sd)
+		*verbal test scores
+		sum verb
+		gen verb_std = (verb - r(mean)) / r(sd)
+
+	*Combine these standardized exam scores into one overall index/tractable number for convenience
+		gen test_score_index = 0.5 * (math_std + verb_std)
+		
+	*Set test_score_index equal to the non-missing exam score 
+		replace test_score_index = verb_std if math_std == .
+		replace test_score_index = math_std if verb_std == .
+		
+* (4) 
+	*As a good rule, we summarize any new variable we generate (in this case test_score_index) to catch potential mistakes
+	sum math
+	sum verb
+	sum test_score_index
+	
+* (5)
+	*We also draw simple graphs of our variables as part of our initial stage in data analysis 
+	histogram math 
+	graph export histogram_math.png, replace
+	
+	histogram verb
+	graph export histogram_verb.png, replace
+	
+	histogram test_score_index
+	graph export histogram_testscoreindex.png, replace
+
+* (6)
+	*In order to evaluate a potential confounding variable, we install binscatter in order create graphs to visualize the following relationships: 
+	ssc install binscatter, replace
+	
+	*relationship between test scores + SES index
+	binscatter test_score_index ses_index, line(lfit)
+	graph export figure0.png, replace
+ 
+	*relationship between class size + SES index
+	binscatter class_size ses_index, line(lfit)
+	graph export figure1.png, replace
+	
+	*relationship between test scores + class size
+	binscatter test_score_index class_size, line(lfit)
+	graph export figure2.png, replace
+
+* (8) 
+	*In order to conduct a graphical regression discontinuity analysis, we:
+	
+	*(a) Draw a binned scatter plot and linear/quadratic line to visualize how class size changes at te 40/41 student school enrollment threshold
+	binscatter class_size school_enrollment if school_enrollment <= 80, rd(40.5) line(lfit)
+	graph export figure3.png, replace
+
+	*(b) Draw a binned scatter plot and linear/quadratic line to visualize how test score index changes at the 40/41 student school enrollment threshold
+	binscatter test_score_index school_enrollment if school_enrollment <= 80, rd(40.5) line(lfit)
+	graph export figure4.png, replace
+	
+* (9)
+	*In order to validate the research design, we:
+	* (a) Draw binned scatter plots to assess the smoothness of 2-3 student or school characteristcs across the 40/41 student enrollment threshold
+	
+	*testing smoothness for boy
+	binscatter boy school_enrollment if school_enrollment <= 80, rd(40.5) line(lfit)
+	graph export figure5.png, replace
+	
+	*testing smoothness for religious
+	binscatter religious school_enrollment if school_enrollment <= 80, rd(40.5) line(lfit)
+	graph export figure6.png, replace
+
+	*testing smoothness for born_isr
+	binscatter born_isr school_enrollment if school_enrollment <= 80, rd(40.5) line(lfit)
+	graph export figure7.png, replace
+
+* (10) In order to assess whether there is evidence of manipulation in school enrollment in the data, we:
+	* (b) 	
+	*Collapse data to school level
+	collapse (mean) test_score_index class_size school_enrollment, by(schlcode)
+	*Look at the first 10 rows of the data
+	list in 1/10
+	
+	* (c) 
+	*Produce a histogram showing the distribution of total school enrollment in the data
+	histogram school_enrollment, width(1)
+	graph export histogram_schoolenrollment.png, replace
+	
+	
+* (11) In order to conduct regression analysis using the collapsed school level data set, we run multivariate regressions to quantify how class size and test score index change at the 40/41 student enrollment threshold, using all observations w/ school enrollment less than or equal to 80:
+	
+	*Create running variable, centered at 41 threshold
+	gen dist_from_41 = school_enrollment - 41
+	* Create indicator for being above probation threshold
+	gen above41 = 0
+	replace above41 = 1 if dist_from_41 >= 0
+	* Interact dist_from_41 with above41 indicator
+	gen interaction41 = dist_from_41 * above41
+	*Estimate regression (all goes on one line) for class size + test score index
+	regress class_size above41 dist_from_41 interaction41 if school_enrollment <= 80, r
+	regress test_score_index above41 dist_from_41 interaction41 if school_enrollment <= 80, r
+
+* (13) Since there are a limited number of schools right around the 40/41 student enrollment threshold, we combine multiple thresholds to obtain more precise estimates:
+
+	*Create running variable that combines cutoffs
+	gen dist_from_cut = school_enrollment - 41 if school_enrollment <= 61
+	replace dist_from_cut = school_enrollment - 81 if school_enrollment > 61 & school_enrollment <= 101
+	replace dist_from_cut = school_enrollment - 121 if school_enrollment > 101 & school_enrollment <= 141
+	replace dist_from_cut = school_enrollment - 161 if school_enrollment > 141
+	
+	*Summarize variable to double check that code is working properly
+	sum dist_from_cut
+	
+* (14)  We conduct another graphical regression discontinuity analysis, where dist_from_cut is now the x-axis variable:
+
+	*(a) Draw a binned scatter plot and linear/quadratic line to visualize how class_size changes at dist_from_cut = 0
+	binscatter class_size dist_from_cut if dist_from_cut > -20 & dist_from_cut < 20, rd(0) line(lfit)
+	graph export figure8.png, replace
+
+ 	*(b) Draw a binned scatter plot and linear/quadratic line to visualize how test_score_index changes at dist_from_cut = 0
+	binscatter test_score_index dist_from_cut if dist_from_cut > -20 & dist_from_cut < 20, rd(0) line(lfit)
+	graph export figure9.png, replace
+
+* (15) Estimate multivariate regressions to quantify how class size and test scores change at the combined school enrollment threshold:
+	
+	* Create indicator T (equal to 1 if dist_from_cut is greater than or equal to 0 and - otherwise)
+	gen T = 0
+	replace T = 1 if dist_from_cut >= 0
+	* Interact T with dist_from_cut
+	gen interaction = T * dist_from_cut	
+	*Estimate regression (all goes on one line) for class size + test score index
+	regress class_size T dist_from_cut interaction if dist_from_cut <= 20 & dist_from_cut >= -20, r
+ 	regress test_score_index T dist_from_cut interaction if dist_from_cut <= 20& dist_from_cut >= -20, r
+	
+log close
