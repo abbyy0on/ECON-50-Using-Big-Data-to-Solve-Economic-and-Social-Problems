@@ -1,0 +1,238 @@
+clear all
+version 17
+cap log close
+cd "C:\Users\abbyy\Downloads"
+
+*Load in data
+use ec50_smoking.dta, replace
+
+*-------------------------------------------------------------------------------
+* Data set up
+*-------------------------------------------------------------------------------
+
+*Indicator variable for North Carolina
+gen nc = 0
+replace nc = 1 if state == "NC"
+
+
+*-------------------------------------------------------------------------------
+* Graphical analyes
+*-------------------------------------------------------------------------------
+
+
+*Example code: Binned scatter plots to modify to complete coding exercise
+
+*To install, type "ssc install binscatter" without the quotes
+*For instructions, type "help binscatter" without the quotes
+
+/* Description of the options used in the long command below
+
+			1.  #delimit ;  The delimit command tells stata that the command continues until the ;
+
+			2. binscatter pack_sales year if inrange(year, 1970, 2017), <- first two variables are what gets plotted. if statement restricts the years
+
+			3.    by(az) <- this line plots a different line for each value of az
+
+			4.	linetype(connect) discrete <- these options give a connected plot with a separate point for each year ("discrete")
+				
+			5.	colors(gs11 blue) <- these are the colors
+				
+			6.	msymbols(circle_hollow square)  <- these are the style of connectors for the lines
+				
+			7.	legend(rows(1) order(1 "Rest of U.S." 2 "Arizona") ) <- this is for the legend
+				
+			8.	xline(1994)  <- this adds a line at 1994
+				
+			9.	; <- this tells stata that this is the end of the line
+
+			10.	#delimit cr <- this goes back to using a new line to tell stata where a command ends
+*/
+
+* 1 (a)
+#delimit ;
+twoway (connected state_tax_dollars year if nc == 1 & inrange(year, 1970, 2018),
+	lcolor(blue) mcolor(blue)
+	msymbol(square) ),
+	legend(off)
+		graphregion(color(white)) bgcolor(white)
+	;
+#delimit cr
+
+*Try it in the data for North Carolina to see what it prodices
+#delimit ;
+binscatter pack_sales year if inrange(year, 1970, 2017), 
+    by(nc) 
+	linetype(connect) discrete
+	colors(gs11 blue) 
+	msymbols(circle_hollow square) 
+	legend(rows(1) order(1 "Rest of U.S." 2 "North Carolina") )
+	xline(2009)  
+	;
+#delimit cr
+
+*Save the graph
+graph export nc.png, replace
+
+*Example 2
+*Indicator variable for North Carolina vs. surrounding states (Virginia, Tennessee, South Carolina, Georgia, and Kentucky)
+gen nc_neighbors = 0 if inlist(state, "VA", "TN", "SC", "GA", "KY")
+replace nc_neighbors = 1 if state == "NC"
+
+*Example Binscatter Command, simply changing by(az) to by(az_neighbors)
+#delimit ;
+binscatter pack_sales year if inrange(year, 1970, 2017), 
+    by(nc_neighbors) 
+	linetype(connect) discrete
+	colors(gs11 blue) 
+	msymbols(circle_hollow square) 
+	legend(rows(1) order(1 "Surrounding States" 2 "North Carolina") )
+	xline(2009)  
+	;
+#delimit cr
+
+*Save the graph
+graph export nc_neighbhors.png, replace
+
+*-------------------------------------------------------------------------------
+* 3. Calculating conditional means
+*-------------------------------------------------------------------------------
+sum pack_sales if nc_neighbors == 1 & year >= 2004 & year <= 2008  
+
+sum pack_sales if nc_neighbors == 1 & year >= 2009 & year <= 2013
+
+sum pack_sales if nc_neighbors == 0 & year >= 2004 & year <= 2008 
+
+sum pack_sales if nc_neighbors == 0 & year >= 2009 & year <= 2013
+
+*-------------------------------------------------------------------------------
+* Regression analysis to quantify what we see in the graphs
+*-------------------------------------------------------------------------------
+
+*Example for regression part of the coding exercise
+*Regression comparing NC vs. neighbors
+*Generate post variable
+gen post = 0
+replace post = 1 if year >= 2009 
+
+*Generate interaction term
+gen dd = post*nc
+
+*Estimate simple difference in difference regression
+regress pack_sales dd post nc_neighbors if inrange(year, 2004, 2013) & inlist(state, "NC", "VA", "TN", "SC", "GA", "KY"), robust
+
+
+*Estimate difference in difference regression extended to multiple control states and many years
+regress pack_sales dd i.year i.state_fips if inrange(year, 2004, 2013) & inlist(state, "NC", "VA", "TN", "SC", "GA", "KY"), robust
+
+clear all
+
+
+*-------------------------------------------------------------------------------
+* Installation
+*-------------------------------------------------------------------------------
+
+*Start by installing synth and synth_runner
+ssc install synth
+net install synth_runner, from(https://raw.github.com/bquistorff/synth_runner/master/) replace
+
+*Run this code if the above doesn't download
+net  from "https://web.stanford.edu/~jhain/Synth"
+net install synth, all replace force
+
+/*
+Synth for Stata runs on Stata versions 9-15 (32 and 64 bit), but contains a platform dependent plugin. Net install will automatically copy the correct version of the plugin to your computer. Currently, plugin versions are included for Windows platforms (XP, Vista, 7, 8) for 32 and 64 bit Stata, Mac platforms (OS X on x86-32, x86-64, PPC-32 and PPc-64) for Stata 32 or 64 bit, and Unix/Linux platforms for 32 and 64 bit Stata. If a plugin is not availbale for your platform, you will receive an error message during the installation. 
+
+You can either download the plugin here: https://web.stanford.edu/~jhain/synthpage.html
+
+Or you can simply shift to the FAS On Demand server and run this part of the code using the Stata virtual desktop.
+
+*/
+
+
+*-------------------------------------------------------------------------------
+* Data set up
+*-------------------------------------------------------------------------------
+
+*Load in data set
+use ec50_smoking.dta, clear
+
+*Declare data as paenl data
+xtset state_fips year
+
+*Natural log of state income per capita
+gen lnincome = log( personal_income)
+
+*Indicator variable for North Carolina
+gen nc = 0
+replace nc = 1 if state == "NC"
+
+*-------------------------------------------------------------------------------
+* Graphical analyes
+*-------------------------------------------------------------------------------
+
+*Trends in per-capita cigarette sales: NC vs. the rest of the United States.
+
+#delimit ;
+binscatter pack_sales year if inrange(year, 1970, 2018), 
+    by(nc) 
+	linetype(connect) discrete
+	colors(gs11 black) 
+	msymbols(circle_hollow square) 
+	legend(rows(1) order(1 "Rest of U.S." 2 "North Carolina") )
+	ytitle("Per Capita Consumption (Packs)" " ")
+	xtitle("Year") 
+	xline(2009)   
+	ylabel(0(20)140) ;
+	;
+#delimit cr
+
+*Save the graph
+graph export northcarolina.png, replace
+
+*-------------------------------------------------------------------------------
+* Synthetic control: Estimation
+*-------------------------------------------------------------------------------
+
+help synth 
+
+*Estimate impact of 2009 cigarette tax policy change
+synth pack_sales beer(2004(1)2008) lnincome(1972(1)2008) cost_per_pack age15to24 pack_sales(1988) pack_sales(1980) pack_sales(1975), trunit(37) trperiod(2009) fig
+
+*Save the graph
+graph export nc_difference.png, replace
+
+
+/*
+In this example, the unit affected by the intervention is unit no 6 (California) in the year 1989.  
+The donor pool (since no counit() is specified) defaults to the other 38 states in the dataset.  
+
+Since no xperiod() is provided, the predictor variables for which no variable specific time period is specified 
+(cost_per_pack age15to24) are averaged over the entire pre-intervention period up to the year of the intervention (1970,1981,...,1988).  
+
+The beer variable has the time period (1984(1)1988) specified, meaning that it is averaged for the
+periods 1984,1985,...,1988. 
+
+The variable pack_sales will be used three times as a predictor using the values from periods 1988, 1980, and 1975 respectively.  
+
+The MSPE is minimized over the entire pretreatment period, because mspeperiod() is not provided. 
+
+By default, results are displayed for the period from 1970,1971,...,2018 period (the earliest and latest year in the dataset).
+
+*/
+
+
+*-------------------------------------------------------------------------------
+* Synthetic control: Permutation test
+*-------------------------------------------------------------------------------
+
+*Use synth_runner as a wrapper function to conduct all the estimations and inference. 
+synth_runner pack_sales beer(2004(1)2008) lnincome(1972(1)2008) cost_per_pack age15to24 pack_sales(1988) pack_sales(1980) pack_sales(1975), trunit(37) trperiod(2009) gen_vars
+ 
+ 
+*Show effect graphs
+effect_graphs , trlinediff(-1)
+graph export effect_graph.png, replace
+
+*Show permutation distribution
+single_treatment_graphs, trlinediff(-1) effects_ylabels(-30(10)30) effects_ymax(35) effects_ymin(-35)
+graph export permutation.png, replace
